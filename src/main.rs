@@ -101,6 +101,12 @@ impl TodoStore {
         Ok(removed_count)
     }
 
+    fn clear_all(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        self.todos.clear();
+        self.save()?;
+        Ok(())
+    }
+
     fn list_todos(&self) -> &Vec<Todo> {
         &self.todos
     }
@@ -113,9 +119,10 @@ enum Commands {
     Complete { id: usize },
     Delete { id: usize },
     Clear,
+    ClearAll,
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let commands = Commands::parse();
 
     let mut store = TodoStore::new()?;
@@ -149,5 +156,10 @@ fn main() {
         Commands::Complete { id } => {
             let _ = store.complete_todo(id)?;
         }
+        Commands::ClearAll => {
+            store.clear_all()?;
+        }
     }
+
+    Ok(())
 }
