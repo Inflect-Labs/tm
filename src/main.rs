@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use clap::Parser;
+use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
@@ -13,17 +14,31 @@ struct Todo {
     completed_at: Option<DateTime<Utc>>,
 }
 
+fn get_data_file_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let data_dir = dirs::data_dir().ok_or("Could not determine data directory")?;
+
+    let app_dir = data_dir.join("td");
+
+    // Create the directory if it doesn't exist
+    if !app_dir.exists() {
+        fs::create_dir_all(&app_dir)?;
+    }
+
+    Ok(app_dir.join("todos.json"))
+}
+
 struct TodoStore {
     file_path: PathBuf,
     todos: Vec<Todo>,
 }
 
 impl TodoStore {
-    fn new(file_path: PathBuf) -> Self {
-        Self {
+    fn new() -> Result<Self, Box<dyn std::error::Error>> {
+        let file_path = get_data_file_path()?;
+        Ok(Self {
             file_path,
             todos: Vec::new(),
-        }
+        })
     }
 
     fn load(&mut self) -> Result<(), Box<dyn std::error::Error>> {
@@ -101,5 +116,38 @@ enum Commands {
 }
 
 fn main() {
-    println!("Hello, world!");
+    let commands = Commands::parse();
+
+    let mut store = TodoStore::new()?;
+    store.load()?;
+
+    match commands {
+        Commands::Add { text } => {
+            store.add_todo(text)?;
+        }
+        Commands::List => {
+            let todos = store.list_todos();
+            if todos.is_empty() {
+                println!("list is empty.");
+            } else {
+                for todo in todos {
+                    let status = if todo.completed {
+                        "✓".green()
+                    } else {
+                        "○".red()
+                    };
+                    println!("[{}], {}, {}", status, todo.id, todo.text);
+                }
+            }
+        }
+        Commands::Clear => {
+            let _ = store.clear_completed()?;
+        }
+        Commands::Delete { id } => {
+            let _ = store.delete_todo(id)?;
+        }
+        Commands::Complete { id } => {
+            let _ = store.complete_todo(id)?;
+        }
+    }
 }
