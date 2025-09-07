@@ -7,7 +7,6 @@ use std::path::PathBuf;
 
 #[derive(Serialize, Deserialize, Clone)]
 struct Todo {
-    id: usize,
     text: String,
     completed: bool,
     created_at: DateTime<Utc>,
@@ -56,9 +55,7 @@ impl TodoStore {
     }
 
     fn add_todo(&mut self, text: String) -> Result<(), Box<dyn std::error::Error>> {
-        let id = self.todos.len() + 1;
         let todo = Todo {
-            id,
             text,
             completed: false,
             created_at: Utc::now(),
@@ -69,8 +66,8 @@ impl TodoStore {
         Ok(())
     }
 
-    fn complete_todo(&mut self, id: usize) -> Result<bool, Box<dyn std::error::Error>> {
-        if let Some(todo) = self.todos.iter_mut().find(|t| t.id == id) {
+    fn complete_todo(&mut self, index: usize) -> Result<bool, Box<dyn std::error::Error>> {
+        if let Some(todo) = self.todos.get_mut(index) {
             todo.completed = true;
             todo.completed_at = Some(Utc::now());
             self.save()?;
@@ -80,10 +77,9 @@ impl TodoStore {
         }
     }
 
-    fn delete_todo(&mut self, id: usize) -> Result<bool, Box<dyn std::error::Error>> {
-        let initial_len = self.todos.len();
-        self.todos.retain(|t| t.id != id);
-        if self.todos.len() < initial_len {
+    fn delete_todo(&mut self, index: usize) -> Result<bool, Box<dyn std::error::Error>> {
+        if index < self.todos.len() {
+            self.todos.remove(index);
             self.save()?;
             Ok(true)
         } else {
@@ -114,11 +110,26 @@ impl TodoStore {
 
 #[derive(Parser)]
 enum Commands {
-    Add { text: String },
+    /// add a new todo item
+    Add {
+        /// description of the item
+        text: String,
+    },
+    /// list all todo items
     List,
-    Complete { id: usize },
-    Delete { id: usize },
+    /// mark an item as completed
+    Check {
+        /// the id of the item to complete
+        index: usize,
+    },
+    /// delete an item
+    Delete {
+        /// the id of the item to delete
+        index: usize,
+    },
+    /// clear all completed items
     Clear,
+    /// clear all items
     ClearAll,
 }
 
@@ -134,27 +145,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Commands::List => {
             let todos = store.list_todos();
+            println!("");
+            println!("");
             if todos.is_empty() {
-                println!("list is empty.");
+                println!("      list is empty.");
             } else {
-                for todo in todos {
+                for (index, todo) in todos.iter().enumerate() {
                     let status = if todo.completed {
                         "✓".green()
                     } else {
                         "○".red()
                     };
-                    println!("[{}], {}, {}", status, todo.id, todo.text);
+                    println!("      [{}]  {}.  {}", status, index, todo.text);
                 }
             }
+
+            println!("");
+            println!("");
         }
         Commands::Clear => {
             let _ = store.clear_completed()?;
         }
-        Commands::Delete { id } => {
-            let _ = store.delete_todo(id)?;
+        Commands::Delete { index } => {
+            let _ = store.delete_todo(index)?;
         }
-        Commands::Complete { id } => {
-            let _ = store.complete_todo(id)?;
+        Commands::Check { index } => {
+            let _ = store.complete_todo(index)?;
         }
         Commands::ClearAll => {
             store.clear_all()?;
