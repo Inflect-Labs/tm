@@ -261,7 +261,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Commands::List => {
             println!("");
+            println!("");
             store.list_todos();
+            println!("");
             println!("");
         }
         Commands::Clear => {
