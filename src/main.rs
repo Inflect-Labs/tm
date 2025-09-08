@@ -11,6 +11,7 @@ struct Todo {
     completed: bool,
     created_at: DateTime<Utc>,
     completed_at: Option<DateTime<Utc>>,
+    subtasks: Vec<Todo>,
 }
 
 fn get_data_file_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
@@ -54,20 +55,52 @@ impl TodoStore {
         Ok(())
     }
 
-    fn add_todo(&mut self, text: String) -> Result<(), Box<dyn std::error::Error>> {
+    fn add_todo(
+        &mut self,
+        path: Vec<usize>,
+        text: String,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let todo = Todo {
             text,
             completed: false,
             created_at: Utc::now(),
             completed_at: None,
+            subtasks: Vec::new(),
         };
-        self.todos.push(todo);
+
+        if path.is_empty() {
+            self.todos.push(todo);
+        } else {
+            let parent = self.find_item(path.clone());
+            if let Some(parent) = parent {
+                parent.subtasks.push(todo);
+            }
+        }
+
         self.save()?;
         Ok(())
     }
 
-    fn complete_todo(&mut self, index: usize) -> Result<bool, Box<dyn std::error::Error>> {
-        if let Some(todo) = self.todos.get_mut(index) {
+    fn find_item(&mut self, path: Vec<usize>) -> Option<&mut Todo> {
+        if path.is_empty() {
+            return None;
+        }
+
+        let mut parent_list = &mut self.todos;
+
+        for &i in &path[..path.len() - 1] {
+            if let Some(todo) = parent_list.get_mut(i) {
+                parent_list = &mut todo.subtasks;
+            } else {
+                return None;
+            }
+        }
+
+        parent_list.get_mut(path[path.len() - 1])
+    }
+
+    fn complete_todo(&mut self, path: Vec<usize>) -> Result<bool, Box<dyn std::error::Error>> {
+        if let Some(todo) = self.find_item(path) {
             todo.completed = true;
             todo.completed_at = Some(Utc::now());
             self.save()?;
@@ -113,6 +146,8 @@ enum Commands {
     /// add a new todo item
     #[command(visible_alias = "a")]
     Add {
+        /// nested index path of the parent item for adding a subtask
+        path: Vec<usize>,
         /// description of the item
         text: String,
     },
@@ -122,14 +157,16 @@ enum Commands {
     /// mark an item as completed
     #[command(visible_alias = "c")]
     Check {
-        /// the id of the item to complete
-        index: usize,
+        /// the nested index path of the item to complete
+        #[arg(required = true, num_args = 1..)]
+        path: Vec<usize>,
     },
     /// delete an item
     #[command(visible_alias = "d", visible_alias = "rm")]
     Delete {
-        /// the id of the item to delete
-        index: usize,
+        /// the nested index path of the item to delete
+        #[arg(required = true, num_args = 1..)]
+        path: Vec<usize>,
     },
     /// clear all completed items
     #[command(visible_alias = "cl")]
@@ -146,8 +183,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     store.load()?;
 
     match commands {
-        Commands::Add { text } => {
-            store.add_todo(text)?;
+        Commands::Add { path, text } => {
+            store.add_todo(path, text)?;
         }
         Commands::List => {
             let todos = store.list_todos();
