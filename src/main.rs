@@ -111,25 +111,31 @@ impl TodoStore {
 #[derive(Parser)]
 enum Commands {
     /// add a new todo item
+    #[command(visible_alias = "a")]
     Add {
         /// description of the item
         text: String,
     },
     /// list all todo items
+    #[command(visible_alias = "l", visible_alias = "ls")]
     List,
     /// mark an item as completed
+    #[command(visible_alias = "c")]
     Check {
         /// the id of the item to complete
         index: usize,
     },
     /// delete an item
+    #[command(visible_alias = "d", visible_alias = "rm")]
     Delete {
         /// the id of the item to delete
         index: usize,
     },
     /// clear all completed items
+    #[command(visible_alias = "cl")]
     Clear,
     /// clear all items
+    #[command(visible_alias = "ca")]
     ClearAll,
 }
 
