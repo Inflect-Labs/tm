@@ -100,10 +100,18 @@ impl TodoStore {
         parent_list.get_mut(path[path.len() - 1])
     }
 
+    fn complete_dfs(todo: &mut Todo) {
+        todo.completed = true;
+        todo.completed_at = Some(Utc::now());
+
+        for sub in todo.subtasks.iter_mut() {
+            Self::complete_dfs(sub);
+        }
+    }
+
     fn complete_todo(&mut self, path: Vec<usize>) -> Result<bool, Box<dyn std::error::Error>> {
         if let Some(todo) = self.find_item(path) {
-            todo.completed = true;
-            todo.completed_at = Some(Utc::now());
+            Self::complete_dfs(todo);
             self.save()?;
             Ok(true)
         } else {
