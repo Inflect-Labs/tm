@@ -15,11 +15,10 @@ struct Todo {
 }
 
 fn get_data_file_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
-    let data_dir = dirs::data_dir().ok_or("Could not determine data directory")?;
+    let data_dir = dirs::data_dir().ok_or("could not determine data directory")?;
 
     let app_dir = data_dir.join("td");
 
-    // Create the directory if it doesn't exist
     if !app_dir.exists() {
         fs::create_dir_all(&app_dir)?;
     }
@@ -59,7 +58,7 @@ impl TodoStore {
         &mut self,
         path: Vec<usize>,
         text: String,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<bool, Box<dyn std::error::Error>> {
         let todo = Todo {
             text,
             completed: false,
@@ -70,15 +69,17 @@ impl TodoStore {
 
         if path.is_empty() {
             self.todos.push(todo);
+            self.save()?;
+            Ok(true)
         } else {
-            let parent = self.find_item(path.clone());
-            if let Some(parent) = parent {
+            if let Some(parent) = self.find_item(path) {
                 parent.subtasks.push(todo);
+                self.save()?;
+                Ok(true)
+            } else {
+                Ok(false)
             }
         }
-
-        self.save()?;
-        Ok(())
     }
 
     fn find_item(&mut self, path: Vec<usize>) -> Option<&mut Todo> {
@@ -110,24 +111,73 @@ impl TodoStore {
         }
     }
 
-    fn delete_todo(&mut self, index: usize) -> Result<bool, Box<dyn std::error::Error>> {
-        if index < self.todos.len() {
-            self.todos.remove(index);
-            self.save()?;
-            Ok(true)
+    fn delete_todo(&mut self, path: Vec<usize>) -> Result<bool, Box<dyn std::error::Error>> {
+        if path.is_empty() {
+            return Ok(false);
+        }
+
+        if path.len() == 1 {
+            let index = path[0];
+            if index < self.todos.len() {
+                self.todos.remove(index);
+                self.save()?;
+                Ok(true)
+            } else {
+                Ok(false)
+            }
         } else {
-            Ok(false)
+            let parent_path = path[..path.len() - 1].to_vec();
+            let index = path[path.len() - 1];
+
+            if let Some(parent) = self.find_item(parent_path) {
+                if index < parent.subtasks.len() {
+                    parent.subtasks.remove(index);
+                    self.save()?;
+                    Ok(true)
+                } else {
+                    Ok(false)
+                }
+            } else {
+                Ok(false)
+            }
         }
     }
 
-    fn clear_completed(&mut self) -> Result<usize, Box<dyn std::error::Error>> {
-        let initial_len = self.todos.len();
-        self.todos.retain(|t| !t.completed);
-        let removed_count = initial_len - self.todos.len();
-        if removed_count > 0 {
-            self.save()?;
+    fn print_todos(todos: &Vec<Todo>, depth: usize) {
+        let indent = "  ".repeat(depth + 3);
+        for (index, todo) in todos.iter().enumerate() {
+            let status = if todo.completed {
+                "✓".green()
+            } else {
+                "○".red()
+            };
+            println!("{}[{}]  {}.  {}", indent, status, index, todo.text);
+
+            if !todo.subtasks.is_empty() {
+                Self::print_todos(&todo.subtasks, depth + 1);
+            }
         }
-        Ok(removed_count)
+    }
+
+    fn list_todos(&self) {
+        if self.todos.is_empty() {
+            println!("      list is empty.");
+        } else {
+            Self::print_todos(&self.todos, 0);
+        }
+    }
+
+    fn clear_completed(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        Self::clear_completed_recursive(&mut self.todos);
+        self.save()?;
+        Ok(())
+    }
+
+    fn clear_completed_recursive(todos: &mut Vec<Todo>) {
+        todos.retain(|t| !t.completed);
+        for todo in todos.iter_mut() {
+            Self::clear_completed_recursive(&mut todo.subtasks);
+        }
     }
 
     fn clear_all(&mut self) -> Result<(), Box<dyn std::error::Error>> {
@@ -135,18 +185,14 @@ impl TodoStore {
         self.save()?;
         Ok(())
     }
-
-    fn list_todos(&self) -> &Vec<Todo> {
-        &self.todos
-    }
 }
 
 #[derive(Parser)]
 enum Commands {
-    /// add a new todo item
+    /// add a new todo item or subtask
     #[command(visible_alias = "a")]
     Add {
-        /// nested index path of the parent item for adding a subtask
+        /// nested index path of the parent item (empty for root level)
         path: Vec<usize>,
         /// description of the item
         text: String,
@@ -176,6 +222,13 @@ enum Commands {
     ClearAll,
 }
 
+fn format_path(path: &Vec<usize>) -> String {
+    path.iter()
+        .map(|i| i.to_string())
+        .collect::<Vec<_>>()
+        .join(".")
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let commands = Commands::parse();
 
@@ -184,39 +237,48 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match commands {
         Commands::Add { path, text } => {
-            store.add_todo(path, text)?;
+            if store.add_todo(path.clone(), text)? {
+                if path.is_empty() {
+                    println!("added todo item");
+                } else {
+                    println!("added subtask to item {}", format_path(&path));
+                }
+            } else {
+                eprintln!(
+                    "error: parent item at path {} not found",
+                    format_path(&path)
+                );
+                std::process::exit(1);
+            }
         }
         Commands::List => {
-            let todos = store.list_todos();
             println!("");
-            println!("");
-            if todos.is_empty() {
-                println!("      list is empty.");
-            } else {
-                for (index, todo) in todos.iter().enumerate() {
-                    let status = if todo.completed {
-                        "✓".green()
-                    } else {
-                        "○".red()
-                    };
-                    println!("      [{}]  {}.  {}", status, index, todo.text);
-                }
-            }
-
-            println!("");
+            store.list_todos();
             println!("");
         }
         Commands::Clear => {
-            let _ = store.clear_completed()?;
+            store.clear_completed()?;
+            println!("cleared completed items");
         }
-        Commands::Delete { index } => {
-            let _ = store.delete_todo(index)?;
+        Commands::Delete { path } => {
+            if store.delete_todo(path.clone())? {
+                println!("deleted item {}", format_path(&path));
+            } else {
+                eprintln!("error: item at path {} not found", format_path(&path));
+                std::process::exit(1);
+            }
         }
-        Commands::Check { index } => {
-            let _ = store.complete_todo(index)?;
+        Commands::Check { path } => {
+            if store.complete_todo(path.clone())? {
+                println!("completed item {}", format_path(&path));
+            } else {
+                eprintln!("error: item at path {} not found", format_path(&path));
+                std::process::exit(1);
+            }
         }
         Commands::ClearAll => {
             store.clear_all()?;
+            println!("cleared all items");
         }
     }
 
