@@ -1,73 +1,50 @@
-# td - Minimal Todo CLI
+# td - minimal todo cli
 
-A simple command-line todo list manager written in Rust. Stores todos in JSON format with cross-platform file storage.
+i hate productivity apps, so i made this.
 
-## Installation
+a simple command-line todo list manager written in rust.
+
+## installation
 
 ```bash
-# Install from source
+# install from source
 cargo install --path .
 
-# Or build manually
+# or build manually
 cargo build --release
 sudo cp target/release/td /usr/local/bin/
 ```
 
-## Usage
+## usage
 
-### Add a todo
+### add a todo
 ```bash
-td add "Buy groceries"
-td add "Walk the dog"
+td add "buy groceries"
+td add "walk the dog"
 ```
 
-### List todos
+### list todos
 ```bash
 td list
 ```
-Output format: `[status] index: text`
+output format: `[status] index: text`
 
-### Complete a todo
+### complete an item
 ```bash
-td complete 0
+td check 0
 ```
 
-### Delete a todo
+### delete an item
 ```bash
 td delete 1
 ```
 
-### Clear completed todos
+### clear completed items
 ```bash
 td clear
 ```
 
-### Clear all todos
+### clear all items
 ```bash
 td clear-all
 ```
-
-## Data Storage
-
-Todos are stored in JSON format at:
-- Linux: `~/.local/share/td/todos.json`
-- macOS: `~/Library/Application Support/td/todos.json`
-- Windows: `C:\Users\{username}\AppData\Roaming\td\todos.json`
-
-## Todo Format
-
-Each todo contains:
-- `text`: The todo description
-- `completed`: Boolean completion status
-- `created_at`: Creation timestamp
-- `completed_at`: Completion timestamp (if completed)
-
-## Commands
-
-- `add <text>` - Add a new todo
-- `list` - Show all todos with indices
-- `complete <index>` - Mark todo as completed
-- `delete <index>` - Remove todo
-- `clear` - Remove all completed todos
-- `clear-all` - Remove all todos
-- `help` - Show help information
