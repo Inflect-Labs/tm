@@ -193,6 +193,85 @@ impl TodoStore {
         self.save()?;
         Ok(())
     }
+
+    fn move_todo(&mut self, path: Vec<usize>, direction: &str) -> Result<bool, Box<dyn std::error::Error>> {
+        if path.is_empty() {
+            return Ok(false);
+        }
+
+        let index = path[path.len() - 1];
+        let parent_path = if path.len() == 1 {
+            Vec::new()
+        } else {
+            path[..path.len() - 1].to_vec()
+        };
+
+        let todo_list = if parent_path.is_empty() {
+            &mut self.todos
+        } else {
+            // Find the parent todo item
+            let mut parent_list = &mut self.todos;
+            for &i in &parent_path {
+                if let Some(todo) = parent_list.get_mut(i) {
+                    parent_list = &mut todo.subtasks;
+                } else {
+                    return Ok(false);
+                }
+            }
+            parent_list
+        };
+
+        if index >= todo_list.len() {
+            return Ok(false);
+        }
+
+        let new_index = match direction.to_lowercase().as_str() {
+            "up" => {
+                if index == 0 {
+                    return Ok(false); // Already at top
+                }
+                index - 1
+            }
+            "down" => {
+                if index >= todo_list.len() - 1 {
+                    return Ok(false); // Already at bottom
+                }
+                index + 1
+            }
+            "top" => {
+                if index == 0 {
+                    return Ok(false); // Already at top
+                }
+                0
+            }
+            "bottom" => {
+                if index >= todo_list.len() - 1 {
+                    return Ok(false); // Already at bottom
+                }
+                todo_list.len() - 1
+            }
+            _ => {
+                // Try to parse as a number for absolute positioning
+                match direction.parse::<usize>() {
+                    Ok(pos) => {
+                        if pos >= todo_list.len() {
+                            return Ok(false);
+                        }
+                        pos
+                    }
+                    Err(_) => return Ok(false),
+                }
+            }
+        };
+
+        // Perform the swap
+        if new_index != index {
+            todo_list.swap(index, new_index);
+            self.save()?;
+        }
+
+        Ok(true)
+    }
 }
 
 #[derive(Parser)]
@@ -228,6 +307,15 @@ enum Commands {
     /// clear all items
     #[command(visible_alias = "ca")]
     ClearAll,
+    /// move an item up or down in the list
+    #[command(visible_alias = "m")]
+    Move {
+        /// the nested index path of the item to move
+        #[arg(required = true, num_args = 1..)]
+        path: Vec<usize>,
+        /// direction to move: up, down, top, bottom, or specific position
+        direction: String,
+    },
 }
 
 fn format_path(path: &Vec<usize>) -> String {
@@ -289,6 +377,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::ClearAll => {
             store.clear_all()?;
             println!("cleared all items");
+        }
+        Commands::Move { path, direction } => {
+            if store.move_todo(path.clone(), &direction)? {
+                println!("moved item {} {}", format_path(&path), direction);
+            } else {
+                eprintln!("error: could not move item at path {}", format_path(&path));
+                std::process::exit(1);
+            }
         }
     }
 
