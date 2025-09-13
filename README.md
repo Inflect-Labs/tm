@@ -10,7 +10,7 @@ cargo install --path .
 
 # or build manually
 cargo build --release
-sudo cp target/release/tmtm /usr/local/bin/
+sudo cp target/release/tm /usr/local/bin/
 ```
 
 ## features
@@ -29,20 +29,20 @@ sudo cp target/release/tmtm /usr/local/bin/
 
 #### add a task
 ```bash
-tmtm add "buy groceries"           # add root level task
+tm add "buy groceries"           # add root level task
 tm a "walk the dog"              # short alias
 ```
 
 #### add subtasks
 ```bash
-tmtm add 0 "get milk"              # add subtask to item 0
-tmtm add 0 "get bread"             # add another subtask to item 0
+tm add 0 "get milk"              # add subtask to item 0
+tm add 0 "get bread"             # add another subtask to item 0
 tm add 0 1 "whole wheat bread"   # add sub-subtask to item 0's subtask 1
 ```
 
 #### list taskstasks
 ```bash
-tmtm list                          # list all tasks
+tm list                          # list all tasks
 tm l                             # short alias
 tm ls                            # another alias
 ```
@@ -51,15 +51,15 @@ output format: `[status] index: text` with nested indentation
 
 #### complete tasks
 ```bash
-tmtm check 0                       # complete main item 0
+tm check 0                       # complete main item 0
 tm c 0 1                         # complete subtask 1 of item 0
-tmtm check 0 1 2                   # complete deeply nested item
+tm check 0 1 2                   # complete deeply nested item
 ```
 
 #### delete tasks
 ```bash
-tmtm delete 1                      # delete main item 1
-tmtm d 0 1                         # delete subtask 1 of item 0
+tm delete 1                      # delete main item 1
+tm d 0 1                         # delete subtask 1 of item 0
 tm rm 2                          # alternative alias
 ```
 
@@ -67,7 +67,7 @@ tm rm 2                          # alternative alias
 
 #### move tasks around
 ```bash
-tmtm move 0 --up                   # move item 0 up one position
+tm move 0 --up                   # move item 0 up one position
 tm m 0 -u                        # short form
 tm move 0 --down                 # move item 0 down one position
 tm m 0 -d                        # short form
@@ -81,7 +81,7 @@ tm m 0 -p 3                      # short form
 
 #### bulk operations
 ```bash
-tmtm clear                         # remove all completed items
+tm clear                         # remove all completed items
 tm cl                            # short alias
 tm clear-all                     # remove ALL items (careful!)
 tm ca                            # short alias
