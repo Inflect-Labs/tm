@@ -1,7 +1,16 @@
 [package]
 name = "td"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
+description = "A simple and powerful todo CLI"
+license = "MIT"
+homepage = "https://td-cli.com"
+repository = "https://github.com/Inflect-Labs/td"
+authors = ["Ethan Trang"]
+
+[[bin]]
+name = "td"
+path = "src/main.rs"
 
 [dependencies]
 clap = { version = "4.0", features = ["derive"] }

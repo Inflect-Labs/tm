@@ -4,6 +4,11 @@ use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
+use std::process::Command;
+
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+const GITHUB_API_URL: &str = "https://api.github.com/repos/Inflect-Labs/td/releases/latest";
+const INSTALL_SCRIPT_URL: &str = "https://td-cli.com/install";
 
 #[derive(Serialize, Deserialize, Clone)]
 struct Todo {
@@ -407,6 +412,9 @@ impl TodoStore {
 }
 
 #[derive(Parser)]
+#[command(name = "td")]
+#[command(about = "A simple and powerful todo CLI")]
+#[command(version = VERSION)]
 enum Commands {
     /// add a new todo item or subtask
     #[command(visible_alias = "a")]
@@ -498,6 +506,36 @@ fn format_path(path: &Vec<usize>) -> String {
         .map(|i| i.to_string())
         .collect::<Vec<_>>()
         .join(".")
+}
+
+fn update_cli() -> Result<(), Box<dyn std::error::Error>> {
+    println!("🔄 Checking for updates...");
+    
+    // For now, we'll use a simple approach that re-runs the install script
+    // In a more sophisticated version, we could check the GitHub API for the latest version
+    
+    println!("Current version: {}", VERSION.green());
+    println!("");
+    println!("Downloading and running the latest installer...");
+    
+    let output = Command::new("bash")
+        .arg("-c")
+        .arg(&format!("curl -fsSL {} | bash", INSTALL_SCRIPT_URL))
+        .output()?;
+    
+    if output.status.success() {
+        println!("✅ Update completed successfully!");
+        println!("Run 'td --version' to verify the new version.");
+    } else {
+        let error_msg = String::from_utf8_lossy(&output.stderr);
+        eprintln!("❌ Update failed: {}", error_msg);
+        eprintln!("");
+        eprintln!("You can try updating manually:");
+        eprintln!("  curl -fsSL {} | bash", INSTALL_SCRIPT_URL);
+        std::process::exit(1);
+    }
+    
+    Ok(())
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -675,6 +713,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("  cargo uninstall td");
             println!("");
             println!("TD CLI has been uninstalled successfully!");
+        }
+        Commands::Update => {
+            update_cli()?;
         }
     }
 
