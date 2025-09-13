@@ -493,6 +493,9 @@ enum Commands {
     },
     /// update TD CLI to the latest version
     Update,
+    /// print version information
+    #[command(visible_alias = "v")]
+    Version,
     /// completely remove TD CLI and all its data
     Uninstall {
         /// skip confirmation prompt
@@ -716,6 +719,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Commands::Update => {
             update_cli()?;
+        }
+        Commands::Version => {
+            println!("td {}", VERSION);
         }
     }
 
