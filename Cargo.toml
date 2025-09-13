@@ -1,15 +1,15 @@
 [package]
-name = "td"
+name = "tm"
 version = "0.1.1"
 edition = "2021"
-description = "A simple and powerful todo CLI"
+description = "A simple and powerful task manager CLI"
 license = "MIT"
 homepage = "https://td-cli.com"
-repository = "https://github.com/Inflect-Labs/td"
+repository = "https://github.com/Inflect-Labs/tm"
 authors = ["Ethan Trang"]
 
 [[bin]]
-name = "td"
+name = "tm"
 path = "src/main.rs"
 
 [dependencies]

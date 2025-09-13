@@ -3,8 +3,8 @@ use clap::Parser;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Parser)]
-#[command(name = "td")]
-#[command(about = "A simple and powerful todo CLI")]
+#[command(name = "tm")]
+#[command(about = "A simple and powerful task manager CLI")]
 #[command(version = VERSION)]
 pub enum Commands {
     /// add a new todo item or subtask
@@ -82,12 +82,12 @@ pub enum Commands {
         /// name of the project to delete
         name: String,
     },
-    /// update TD CLI to the latest version
+    /// update TM CLI to the latest version
     Update,
     /// print version information
     #[command(visible_alias = "v")]
     Version,
-    /// completely remove TD CLI and all its data
+    /// completely remove TM CLI and all its data
     Uninstall {
         /// skip confirmation prompt
         #[arg(short = 'y', long = "yes")]

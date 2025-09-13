@@ -1,8 +1,8 @@
-# td - minimal todo cli
+# tm - minimal task manager cli
 
 i hate productivity apps, so i made this.
 
-a simple command-line todo list manager with nested subtasks written in rust.
+a simple command-line task manager with nested subtasks written in rust.
 
 ## installation
 
@@ -12,29 +12,29 @@ cargo install --path .
 
 # or build manually
 cargo build --release
-sudo cp target/release/td /usr/local/bin/
+sudo cp target/release/tm /usr/local/bin/
 ```
 
 ## usage
 
-### add a todo
+### add a task
 
 ```bash
-td add "buy groceries"
-td add "walk the dog"
+tm add "buy groceries"
+tm add "walk the dog"
 ```
 
 ### add a subtask
 
 ```bash
-td add 0 "get milk"
-td add 0 "get bread"
+tm add 0 "get milk"
+tm add 0 "get bread"
 ```
 
-### list todos
+### list tasks
 
 ```bash
-td list
+tm list
 ```
 
 output format: `[status] index: text` with nested indentation
@@ -42,22 +42,22 @@ output format: `[status] index: text` with nested indentation
 ### complete an item or subtask
 
 ```bash
-td check 0        # complete main item
-td check 0 1      # complete subtask 1 of item 0
-td check 0 1 2    # complete deeply nested item
+tm check 0        # complete main item
+tm check 0 1      # complete subtask 1 of item 0
+tm check 0 1 2    # complete deeply nested item
 ```
 
 ### delete an item or subtask
 
 ```bash
-td delete 1       # delete main item 1
-td delete 0 1     # delete subtask 1 of item 0
+tm delete 1       # delete main item 1
+tm delete 0 1     # delete subtask 1 of item 0
 ```
 
 ### clear completed items
 
 ```bash
-td clear
+tm clear
 ```
 
 removes all completed items and subtasks recursively
@@ -65,5 +65,5 @@ removes all completed items and subtasks recursively
 ### clear all items
 
 ```bash
-td clear-all
+tm clear-all
 ```

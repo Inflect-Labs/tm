@@ -173,7 +173,7 @@ pub fn handle_update() -> Result<(), Box<dyn std::error::Error>> {
 
     if output.status.success() {
         println!("✅ Update completed successfully!");
-        println!("Run 'td --version' to verify the new version.");
+        println!("Run 'tm --version' to verify the new version.");
     } else {
         let error_msg = String::from_utf8_lossy(&output.stderr);
         eprintln!("❌ Update failed: {}", error_msg);
@@ -187,7 +187,7 @@ pub fn handle_update() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 pub fn handle_version() {
-    println!("td {}", VERSION);
+    println!("tm {}", VERSION);
 }
 
 pub fn handle_uninstall(yes: bool) -> Result<(), Box<dyn std::error::Error>> {
@@ -199,7 +199,7 @@ pub fn handle_uninstall(yes: bool) -> Result<(), Box<dyn std::error::Error>> {
     if !yes {
         println!("⚠️  This will permanently delete:");
         println!("   • ALL your todo data: {}", data_dir.display());
-        println!("   • TD CLI binary: {}", current_exe.display());
+        println!("   • TM CLI binary: {}", current_exe.display());
         println!("");
         print!("Are you sure you want to continue? (y/N): ");
         use std::io::{self, Write};
@@ -223,7 +223,7 @@ pub fn handle_uninstall(yes: bool) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Remove the binary itself
-    println!("✓ Removing TD CLI binary from {}", current_exe.display());
+    println!("✓ Removing TM CLI binary from {}", current_exe.display());
 
     // We need to delete ourselves, which requires special handling
     #[cfg(unix)]
@@ -233,7 +233,7 @@ pub fn handle_uninstall(yes: bool) -> Result<(), Box<dyn std::error::Error>> {
             println!("⚠️  Could not remove binary automatically: {}", e);
             println!("   Please manually remove: {}", current_exe.display());
         } else {
-            println!("✓ Removed TD CLI binary");
+            println!("✓ Removed TM CLI binary");
         }
     }
 
@@ -246,8 +246,8 @@ pub fn handle_uninstall(yes: bool) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     println!("");
-    println!("✅ TD CLI has been uninstalled successfully!");
-    println!("   Thank you for using TD CLI!");
+    println!("✅ TM CLI has been uninstalled successfully!");
+    println!("   Thank you for using TM CLI!");
 
     Ok(())
 }
