@@ -57,22 +57,22 @@ jobs:
         run: |
           cargo build --release --target ${{ matrix.target }}
 
-      - name: Create checksum
+      - name: Rename binary and create checksum
         shell: bash
         run: |
+          cd target/${{ matrix.target }}/release
+          cp ${{ matrix.artifact_name }} ${{ matrix.asset_name }}
           if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-            cd target/${{ matrix.target }}/release
-            sha256sum ${{ matrix.artifact_name }} > ${{ matrix.asset_name }}.sha256
+            sha256sum ${{ matrix.asset_name }} > ${{ matrix.asset_name }}.sha256
           else
-            cd target/${{ matrix.target }}/release
-            shasum -a 256 ${{ matrix.artifact_name }} > ${{ matrix.asset_name }}.sha256
+            shasum -a 256 ${{ matrix.asset_name }} > ${{ matrix.asset_name }}.sha256
           fi
 
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset_name }}
-          path: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+          path: target/${{ matrix.target }}/release/${{ matrix.asset_name }}
 
       - name: Upload checksum
         uses: actions/upload-artifact@v4
