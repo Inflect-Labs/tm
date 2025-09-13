@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
 
 permissions:
@@ -85,7 +85,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -95,53 +95,27 @@ jobs:
         with:
           path: artifacts
 
-      - name: Setup GitHub CLI
-        run: |
-          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-          sudo apt update
-          sudo apt install gh
-
       - name: Create Release
-        id: create_release
-        run: |
-          gh release create ${{ github.ref_name }} \
-            --title "Release ${{ github.ref_name }}" \
-            --notes "## Installation
+        uses: softprops/action-gh-release@v1
+        with:
+          files: artifacts/*/*
+          body: |
+            ## Installation
 
-          ### Quick Install (Recommended)
-          \`\`\`bash
-          curl -fsSL https://td-cli.com/install | bash
-          \`\`\`
+            ### Quick Install (Recommended)
+            ```bash
+            curl -fsSL https://td-cli.com/install | bash
+            ```
 
-          ### Manual Installation
-          1. Download the appropriate binary for your platform below
-          2. Make it executable: \`chmod +x td-*\`
-          3. Move to your PATH: \`sudo mv td-* /usr/local/bin/td\`
+            ### Manual Installation
+            1. Download the appropriate binary for your platform below
+            2. Make it executable: `chmod +x td-*`
+            3. Move to your PATH: `sudo mv td-* /usr/local/bin/td`
 
-          ### Verify Installation
-          \`\`\`bash
-          td --version
-          \`\`\`
+            ### Verify Installation
+            ```bash
+            td --version
+            ```
 
-          ## Changes
-          - See commit history for detailed changes"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload Release Assets
-        run: |
-          # List all downloaded artifacts for debugging
-          echo "Available artifacts:"
-          find artifacts -type f -name "*" | sort
-          
-          # Upload all files
-          for file in artifacts/*/*; do
-            if [ -f "$file" ]; then
-              echo "Uploading: $file"
-              gh release upload ${{ github.ref_name }} "$file" --clobber
-            fi
-          done
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+            ## Changes
+            - See commit history for detailed changes
