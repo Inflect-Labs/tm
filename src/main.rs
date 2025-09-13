@@ -14,6 +14,19 @@ struct Todo {
     subtasks: Vec<Todo>,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+struct Project {
+    name: String,
+    todos: Vec<Todo>,
+    created_at: DateTime<Utc>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct ProjectStore {
+    current_project: String,
+    projects: Vec<Project>,
+}
+
 fn get_data_file_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
     let data_dir = dirs::data_dir().ok_or("could not determine data directory")?;
 
@@ -28,7 +41,7 @@ fn get_data_file_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
 
 struct TodoStore {
     file_path: PathBuf,
-    todos: Vec<Todo>,
+    store: ProjectStore,
 }
 
 impl TodoStore {
@@ -36,22 +49,69 @@ impl TodoStore {
         let file_path = get_data_file_path()?;
         Ok(Self {
             file_path,
-            todos: Vec::new(),
+            store: ProjectStore {
+                current_project: "default".to_string(),
+                projects: vec![Project {
+                    name: "default".to_string(),
+                    todos: Vec::new(),
+                    created_at: Utc::now(),
+                }],
+            },
         })
     }
 
     fn load(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         if self.file_path.exists() {
             let content = fs::read_to_string(&self.file_path)?;
-            self.todos = serde_json::from_str(&content)?;
+            
+            // Try to deserialize as new format first
+            if let Ok(store) = serde_json::from_str::<ProjectStore>(&content) {
+                self.store = store;
+            } else {
+                // Try to deserialize as old format (array of todos) and migrate
+                if let Ok(todos) = serde_json::from_str::<Vec<Todo>>(&content) {
+                    self.store = ProjectStore {
+                        current_project: "default".to_string(),
+                        projects: vec![Project {
+                            name: "default".to_string(),
+                            todos,
+                            created_at: Utc::now(),
+                        }],
+                    };
+                    // Save the migrated data
+                    self.save()?;
+                } else {
+                    return Err("Invalid data format in todos.json".into());
+                }
+            }
         }
         Ok(())
     }
 
     fn save(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let content = serde_json::to_string_pretty(&self.todos)?;
+        let content = serde_json::to_string_pretty(&self.store)?;
         fs::write(&self.file_path, content)?;
         Ok(())
+    }
+
+    fn get_current_todos(&mut self) -> &mut Vec<Todo> {
+        // Ensure current project exists, create default if needed
+        if !self.store.projects.iter().any(|p| p.name == self.store.current_project) {
+            self.store.current_project = "default".to_string();
+            if !self.store.projects.iter().any(|p| p.name == "default") {
+                self.store.projects.push(Project {
+                    name: "default".to_string(),
+                    todos: Vec::new(),
+                    created_at: Utc::now(),
+                });
+            }
+        }
+        
+        // Now safely get the current project's todos
+        self.store.projects.iter_mut()
+            .find(|p| p.name == self.store.current_project)
+            .map(|p| &mut p.todos)
+            .unwrap()
     }
 
     fn add_todo(
@@ -67,8 +127,9 @@ impl TodoStore {
             subtasks: Vec::new(),
         };
 
+        let todos = self.get_current_todos();
         if path.is_empty() {
-            self.todos.push(todo);
+            todos.push(todo);
             self.save()?;
             Ok(true)
         } else {
@@ -87,7 +148,8 @@ impl TodoStore {
             return None;
         }
 
-        let mut parent_list = &mut self.todos;
+        let todos = self.get_current_todos();
+        let mut parent_list = todos;
 
         for &i in &path[..path.len() - 1] {
             if let Some(todo) = parent_list.get_mut(i) {
@@ -124,10 +186,11 @@ impl TodoStore {
             return Ok(false);
         }
 
+        let todos = self.get_current_todos();
         if path.len() == 1 {
             let index = path[0];
-            if index < self.todos.len() {
-                self.todos.remove(index);
+            if index < todos.len() {
+                todos.remove(index);
                 self.save()?;
                 Ok(true)
             } else {
@@ -167,16 +230,18 @@ impl TodoStore {
         }
     }
 
-    fn list_todos(&self) {
-        if self.todos.is_empty() {
+    fn list_todos(&mut self) {
+        let todos = self.get_current_todos();
+        if todos.is_empty() {
             println!("      list is empty.");
         } else {
-            Self::print_todos(&self.todos, 0);
+            Self::print_todos(todos, 0);
         }
     }
 
     fn clear_completed(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        Self::clear_completed_recursive(&mut self.todos);
+        let todos = self.get_current_todos();
+        Self::clear_completed_recursive(todos);
         self.save()?;
         Ok(())
     }
@@ -189,7 +254,8 @@ impl TodoStore {
     }
 
     fn clear_all(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        self.todos.clear();
+        let todos = self.get_current_todos();
+        todos.clear();
         self.save()?;
         Ok(())
     }
@@ -206,11 +272,12 @@ impl TodoStore {
             path[..path.len() - 1].to_vec()
         };
 
+        let todos = self.get_current_todos();
         let todo_list = if parent_path.is_empty() {
-            &mut self.todos
+            todos
         } else {
             // Find the parent todo item
-            let mut parent_list = &mut self.todos;
+            let mut parent_list = todos;
             for &i in &parent_path {
                 if let Some(todo) = parent_list.get_mut(i) {
                     parent_list = &mut todo.subtasks;
@@ -272,6 +339,67 @@ impl TodoStore {
 
         Ok(true)
     }
+
+    // Project management methods
+    fn create_project(&mut self, name: String) -> Result<bool, Box<dyn std::error::Error>> {
+        if self.store.projects.iter().any(|p| p.name == name) {
+            return Ok(false); // Project already exists
+        }
+        
+        self.store.projects.push(Project {
+            name: name.clone(),
+            todos: Vec::new(),
+            created_at: Utc::now(),
+        });
+        self.save()?;
+        Ok(true)
+    }
+
+    fn switch_project(&mut self, name: String) -> Result<bool, Box<dyn std::error::Error>> {
+        if self.store.projects.iter().any(|p| p.name == name) {
+            self.store.current_project = name;
+            self.save()?;
+            Ok(true)
+        } else {
+            Ok(false) // Project doesn't exist
+        }
+    }
+
+    fn list_projects(&self) {
+        println!("Available projects:");
+        for project in &self.store.projects {
+            let marker = if project.name == self.store.current_project {
+                " * ".green()
+            } else {
+                "   ".normal()
+            };
+            println!("{}{}", marker, project.name);
+        }
+    }
+
+    fn delete_project(&mut self, name: String) -> Result<bool, Box<dyn std::error::Error>> {
+        if name == "default" {
+            return Ok(false); // Cannot delete default project
+        }
+        
+        if let Some(pos) = self.store.projects.iter().position(|p| p.name == name) {
+            self.store.projects.remove(pos);
+            
+            // If we deleted the current project, switch to default
+            if self.store.current_project == name {
+                self.store.current_project = "default".to_string();
+            }
+            
+            self.save()?;
+            Ok(true)
+        } else {
+            Ok(false) // Project doesn't exist
+        }
+    }
+
+    fn get_current_project_name(&self) -> &str {
+        &self.store.current_project
+    }
 }
 
 #[derive(Parser)]
@@ -279,10 +407,11 @@ enum Commands {
     /// add a new todo item or subtask
     #[command(visible_alias = "a")]
     Add {
-        /// nested index path of the parent item (empty for root level)
-        path: Vec<usize>,
         /// description of the item
         text: String,
+        /// nested index path of the parent item (empty for root level)
+        #[arg(required = false)]
+        path: Vec<usize>,
     },
     /// list all todo items
     #[command(visible_alias = "l", visible_alias = "ls")]
@@ -313,8 +442,42 @@ enum Commands {
         /// the nested index path of the item to move
         #[arg(required = true, num_args = 1..)]
         path: Vec<usize>,
-        /// direction to move: up, down, top, bottom, or specific position
-        direction: String,
+        /// move up one position
+        #[arg(short = 'u', long = "up")]
+        up: bool,
+        /// move down one position
+        #[arg(short = 'd', long = "down")]
+        down: bool,
+        /// move to top
+        #[arg(short = 't', long = "top")]
+        top: bool,
+        /// move to bottom
+        #[arg(short = 'b', long = "bottom")]
+        bottom: bool,
+        /// specific position to move to
+        #[arg(short = 'p', long = "position")]
+        position: Option<usize>,
+    },
+    /// create a new project
+    #[command(visible_alias = "cp")]
+    CreateProject {
+        /// name of the project to create
+        name: String,
+    },
+    /// switch to a different project
+    #[command(visible_alias = "sp")]
+    SwitchProject {
+        /// name of the project to switch to
+        name: String,
+    },
+    /// list all available projects
+    #[command(visible_alias = "lp")]
+    ListProjects,
+    /// delete a project
+    #[command(visible_alias = "dp")]
+    DeleteProject {
+        /// name of the project to delete
+        name: String,
     },
 }
 
@@ -349,6 +512,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Commands::List => {
             println!("");
+            println!("Current project: {}", store.get_current_project_name().green());
             println!("");
             store.list_todos();
             println!("");
@@ -378,11 +542,54 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             store.clear_all()?;
             println!("cleared all items");
         }
-        Commands::Move { path, direction } => {
+        Commands::Move { path, up, down, top, bottom, position } => {
+            // Determine the direction based on the flags
+            let direction = if up {
+                "up".to_string()
+            } else if down {
+                "down".to_string()
+            } else if top {
+                "top".to_string()
+            } else if bottom {
+                "bottom".to_string()
+            } else if let Some(pos) = position {
+                pos.to_string()
+            } else {
+                eprintln!("error: must specify a direction flag (-u, -d, -t, -b) or position (-p)");
+                std::process::exit(1);
+            };
+
             if store.move_todo(path.clone(), &direction)? {
                 println!("moved item {} {}", format_path(&path), direction);
             } else {
                 eprintln!("error: could not move item at path {}", format_path(&path));
+                std::process::exit(1);
+            }
+        }
+        Commands::CreateProject { name } => {
+            if store.create_project(name.clone())? {
+                println!("created project '{}'", name);
+            } else {
+                eprintln!("error: project '{}' already exists", name);
+                std::process::exit(1);
+            }
+        }
+        Commands::SwitchProject { name } => {
+            if store.switch_project(name.clone())? {
+                println!("switched to project '{}'", name);
+            } else {
+                eprintln!("error: project '{}' not found", name);
+                std::process::exit(1);
+            }
+        }
+        Commands::ListProjects => {
+            store.list_projects();
+        }
+        Commands::DeleteProject { name } => {
+            if store.delete_project(name.clone())? {
+                println!("deleted project '{}'", name);
+            } else {
+                eprintln!("error: project '{}' not found or cannot be deleted", name);
                 std::process::exit(1);
             }
         }
