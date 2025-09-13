@@ -39,6 +39,11 @@ fn get_data_file_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
     Ok(app_dir.join("todos.json"))
 }
 
+fn get_data_directory() -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let data_dir = dirs::data_dir().ok_or("could not determine data directory")?;
+    Ok(data_dir.join("td"))
+}
+
 struct TodoStore {
     file_path: PathBuf,
     store: ProjectStore,
@@ -478,6 +483,12 @@ enum Commands {
         /// name of the project to delete
         name: String,
     },
+    /// completely remove TD CLI and all its data
+    Uninstall {
+        /// skip confirmation prompt
+        #[arg(short = 'y', long = "yes")]
+        yes: bool,
+    },
 }
 
 fn format_path(path: &Vec<usize>) -> String {
@@ -591,6 +602,39 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 eprintln!("error: project '{}' not found or cannot be deleted", name);
                 std::process::exit(1);
             }
+        }
+        Commands::Uninstall { yes } => {
+            let data_dir = get_data_directory()?;
+            
+            if !yes {
+                println!("⚠️  This will permanently delete ALL your todo data!");
+                println!("   Data location: {}", data_dir.display());
+                println!("");
+                print!("Are you sure you want to continue? (y/N): ");
+                use std::io::{self, Write};
+                io::stdout().flush()?;
+                
+                let mut input = String::new();
+                io::stdin().read_line(&mut input)?;
+                
+                if !input.trim().to_lowercase().starts_with('y') {
+                    println!("Uninstall cancelled.");
+                    return Ok(());
+                }
+            }
+            
+            if data_dir.exists() {
+                fs::remove_dir_all(&data_dir)?;
+                println!("✓ Removed all todo data from {}", data_dir.display());
+            } else {
+                println!("No data found to remove");
+            }
+            
+            println!("");
+            println!("To remove the TD CLI binary, run:");
+            println!("  cargo uninstall td");
+            println!("");
+            println!("TD CLI has been uninstalled successfully!");
         }
     }
 
