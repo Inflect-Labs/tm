@@ -366,7 +366,6 @@ impl TodoStore {
     }
 
     fn list_projects(&self) {
-        println!("Available projects:");
         for project in &self.store.projects {
             let marker = if project.name == self.store.current_project {
                 " * ".green()
@@ -512,7 +511,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Commands::List => {
             println!("");
-            println!("Current project: {}", store.get_current_project_name().green());
+            println!("      Current: {}", store.get_current_project_name().green());
             println!("");
             store.list_todos();
             println!("");
