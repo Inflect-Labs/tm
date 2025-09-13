@@ -6,7 +6,7 @@ use crate::store::TodoStore;
 use crate::utils::{format_path, get_data_directory};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
-const INSTALL_SCRIPT_URL: &str = "https://td-cli.com/install";
+const INSTALL_SCRIPT_URL: &str = "https://tm-cli.com/install";
 
 pub fn handle_add(
     store: &mut TodoStore,
@@ -158,11 +158,31 @@ pub fn handle_delete_project(
 
 pub fn handle_update() -> Result<(), Box<dyn std::error::Error>> {
     println!("🔄 Checking for updates...");
-
-    // For now, we'll use a simple approach that re-runs the install script
-    // In a more sophisticated version, we could check the GitHub API for the latest version
-
     println!("Current version: {}", VERSION.green());
+
+    // Check latest version from our API
+    let latest_version = match get_latest_version() {
+        Ok(version) => version,
+        Err(e) => {
+            println!("⚠️  Could not check latest version: {}", e);
+            println!("Proceeding with update anyway...");
+            "unknown".to_string()
+        }
+    };
+
+    if latest_version != "unknown" {
+        println!("Latest version: {}", latest_version.green());
+        
+        // Compare versions (remove 'v' prefix if present)
+        let current_clean = VERSION.trim_start_matches('v');
+        let latest_clean = latest_version.trim_start_matches('v');
+        
+        if current_clean == latest_clean {
+            println!("✅ You're already running the latest version!");
+            return Ok(());
+        }
+    }
+
     println!("");
     println!("Downloading and running the latest installer...");
 
@@ -184,6 +204,30 @@ pub fn handle_update() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     Ok(())
+}
+
+fn get_latest_version() -> Result<String, Box<dyn std::error::Error>> {
+    let output = Command::new("curl")
+        .arg("-sL")
+        .arg("https://tm-cli.com/api/version")
+        .output()?;
+
+    if !output.status.success() {
+        return Err("Failed to fetch version from API".into());
+    }
+
+    let response = String::from_utf8(output.stdout)?;
+    
+    // Simple JSON parsing to extract version
+    if let Some(start) = response.find("\"version\":\"") {
+        let start = start + 11; // Length of "\"version\":\""
+        if let Some(end) = response[start..].find("\"") {
+            let version = &response[start..start + end];
+            return Ok(version.to_string());
+        }
+    }
+    
+    Err("Could not parse version from API response".into())
 }
 
 pub fn handle_version() {
