@@ -48,6 +48,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc-aarch64-linux-gnu
+          echo 'CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc' >> $GITHUB_ENV
 
       - name: Build binary
         run: |
@@ -91,56 +92,52 @@ jobs:
         with:
           path: artifacts
 
+      - name: Setup GitHub CLI
+        run: |
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+          sudo apt update
+          sudo apt install gh
+
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1
+        run: |
+          gh release create ${{ github.ref_name }} \
+            --title "Release ${{ github.ref_name }}" \
+            --notes "## Installation
+
+          ### Quick Install (Recommended)
+          \`\`\`bash
+          curl -fsSL https://td-cli.com/install | bash
+          \`\`\`
+
+          ### Manual Installation
+          1. Download the appropriate binary for your platform below
+          2. Make it executable: \`chmod +x td-*\`
+          3. Move to your PATH: \`sudo mv td-* /usr/local/bin/td\`
+
+          ### Verify Installation
+          \`\`\`bash
+          td --version
+          \`\`\`
+
+          ## Changes
+          - See commit history for detailed changes"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref_name }}
-          release_name: Release ${{ github.ref_name }}
-          draft: false
-          prerelease: false
-          body: |
-            ## Installation
-
-            ### Quick Install (Recommended)
-            ```bash
-            curl -fsSL https://td-cli.com/install | bash
-            ```
-
-            ### Manual Installation
-            1. Download the appropriate binary for your platform below
-            2. Make it executable: `chmod +x td-*`
-            3. Move to your PATH: `sudo mv td-* /usr/local/bin/td`
-
-            ### Verify Installation
-            ```bash
-            td --version
-            ```
-
-            ## Changes
-            - See commit history for detailed changes
 
       - name: Upload Release Assets
         run: |
-          for asset in artifacts/*/; do
-            asset_name=$(basename "$asset")
-            file_path="$asset"*
-            echo "Uploading $asset_name from $file_path"
-            
-            # Upload binary
-            if [[ ! "$asset_name" == *.sha256 ]]; then
-              gh release upload ${{ github.ref_name }} "$file_path" --clobber
-            fi
-          done
+          # List all downloaded artifacts for debugging
+          echo "Available artifacts:"
+          find artifacts -type f -name "*" | sort
           
-          # Upload checksums
-          for checksum in artifacts/*.sha256/; do
-            checksum_name=$(basename "$checksum")
-            file_path="$checksum"*
-            echo "Uploading $checksum_name from $file_path"
-            gh release upload ${{ github.ref_name }} "$file_path" --clobber
+          # Upload all files
+          for file in artifacts/*/*; do
+            if [ -f "$file" ]; then
+              echo "Uploading: $file"
+              gh release upload ${{ github.ref_name }} "$file" --clobber
+            fi
           done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
