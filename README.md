@@ -1,4 +1,4 @@
-# ttm - minimal task manager cli
+# tm - minimal task manager cli
 
 a minimal and powerful task management cli, built for devs and coding agents.
 
