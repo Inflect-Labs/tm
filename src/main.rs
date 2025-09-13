@@ -483,6 +483,8 @@ enum Commands {
         /// name of the project to delete
         name: String,
     },
+    /// update TD CLI to the latest version
+    Update,
     /// completely remove TD CLI and all its data
     Uninstall {
         /// skip confirmation prompt
@@ -601,6 +603,44 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             } else {
                 eprintln!("error: project '{}' not found or cannot be deleted", name);
                 std::process::exit(1);
+            }
+        }
+        Commands::Update => {
+            println!("Updating TD CLI...");
+            
+            // Try to determine if we're in the source directory
+            let current_dir = std::env::current_dir()?;
+            let cargo_toml_path = current_dir.join("Cargo.toml");
+            
+            if cargo_toml_path.exists() {
+                // We're in the source directory, build and install from here
+                println!("Building and installing from current directory...");
+                let output = std::process::Command::new("cargo")
+                    .args(&["install", "--path", "."])
+                    .output()?;
+                
+                if output.status.success() {
+                    println!("✓ TD CLI updated successfully!");
+                } else {
+                    eprintln!("✗ Update failed:");
+                    eprintln!("{}", String::from_utf8_lossy(&output.stderr));
+                    std::process::exit(1);
+                }
+            } else {
+                // We're not in the source directory, try to install from git
+                println!("Installing latest version from git...");
+                let output = std::process::Command::new("cargo")
+                    .args(&["install", "--git", "https://github.com/your-username/td", "--force"])
+                    .output()?;
+                
+                if output.status.success() {
+                    println!("✓ TD CLI updated successfully!");
+                } else {
+                    eprintln!("✗ Update failed:");
+                    eprintln!("{}", String::from_utf8_lossy(&output.stderr));
+                    eprintln!("Tip: If you have the source code, run 'td update' from the project directory");
+                    std::process::exit(1);
+                }
             }
         }
         Commands::Uninstall { yes } => {
