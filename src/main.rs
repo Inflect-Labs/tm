@@ -652,9 +652,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::Uninstall { yes } => {
             let data_dir = get_data_directory()?;
             
+            // Get the current binary path
+            let current_exe = std::env::current_exe()?;
+            
             if !yes {
-                println!("⚠️  This will permanently delete ALL your todo data!");
-                println!("   Data location: {}", data_dir.display());
+                println!("⚠️  This will permanently delete:");
+                println!("   • ALL your todo data: {}", data_dir.display());
+                println!("   • TD CLI binary: {}", current_exe.display());
                 println!("");
                 print!("Are you sure you want to continue? (y/N): ");
                 use std::io::{self, Write};
@@ -669,6 +673,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
             
+            // Remove data directory
             if data_dir.exists() {
                 fs::remove_dir_all(&data_dir)?;
                 println!("✓ Removed all todo data from {}", data_dir.display());
@@ -676,11 +681,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 println!("No data found to remove");
             }
             
+            // Remove the binary itself
+            println!("✓ Removing TD CLI binary from {}", current_exe.display());
+            
+            // We need to delete ourselves, which requires special handling
+            #[cfg(unix)]
+            {
+                // On Unix systems, we can delete the file while it's running
+                if let Err(e) = fs::remove_file(&current_exe) {
+                    println!("⚠️  Could not remove binary automatically: {}", e);
+                    println!("   Please manually remove: {}", current_exe.display());
+                } else {
+                    println!("✓ Removed TD CLI binary");
+                }
+            }
+            
+            #[cfg(windows)]
+            {
+                // On Windows, we need to use a different approach
+                println!("⚠️  Windows detected - binary removal requires manual deletion");
+                println!("   Please manually remove: {}", current_exe.display());
+                println!("   Or run: del \"{}\"", current_exe.display());
+            }
+            
             println!("");
-            println!("To remove the TD CLI binary, run:");
-            println!("  cargo uninstall td");
-            println!("");
-            println!("TD CLI has been uninstalled successfully!");
+            println!("✅ TD CLI has been uninstalled successfully!");
+            println!("   Thank you for using TD CLI!");
         }
         Commands::Version => {
             println!("td {}", VERSION);
