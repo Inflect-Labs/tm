@@ -6,6 +6,7 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 #[command(name = "tm")]
 #[command(about = "A simple and powerful task manager CLI")]
 #[command(version = VERSION)]
+#[command(arg_required_else_help = true)]
 pub enum Commands {
     /// add a new todo item or subtask
     #[command(visible_alias = "a")]
@@ -85,7 +86,6 @@ pub enum Commands {
     /// update TM CLI to the latest version
     Update,
     /// print version information
-    #[command(visible_alias = "v")]
     Version,
     /// completely remove TM CLI and all its data
     Uninstall {

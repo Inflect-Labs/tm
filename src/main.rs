@@ -11,6 +11,13 @@ use handlers::*;
 use store::TodoStore;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Check for version flags first
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() == 2 && (args[1] == "-v" || args[1] == "--version") {
+        handle_version();
+        return Ok(());
+    }
+
     let commands = Commands::parse();
 
     let mut store = TodoStore::new()?;
