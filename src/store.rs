@@ -4,15 +4,15 @@ use serde_json;
 use std::fs;
 use std::path::PathBuf;
 
-use crate::models::{Project, ProjectStore, Todo};
+use crate::models::{Project, ProjectStore, Task};
 use crate::utils::get_data_file_path;
 
-pub struct TodoStore {
+pub struct TaskStore {
     file_path: PathBuf,
     store: ProjectStore,
 }
 
-impl TodoStore {
+impl TaskStore {
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
         let file_path = get_data_file_path()?;
         Ok(Self {
@@ -21,7 +21,7 @@ impl TodoStore {
                 current_project: "default".to_string(),
                 projects: vec![Project {
                     name: "default".to_string(),
-                    todos: Vec::new(),
+                    tasks: Vec::new(),
                     created_at: Utc::now(),
                 }],
             },
@@ -36,20 +36,20 @@ impl TodoStore {
             if let Ok(store) = serde_json::from_str::<ProjectStore>(&content) {
                 self.store = store;
             } else {
-                // Try to deserialize as old format (array of todos) and migrate
-                if let Ok(todos) = serde_json::from_str::<Vec<Todo>>(&content) {
+                // Try to deserialize as old format (array of tasks) and migrate
+                if let Ok(tasks) = serde_json::from_str::<Vec<Task>>(&content) {
                     self.store = ProjectStore {
                         current_project: "default".to_string(),
                         projects: vec![Project {
                             name: "default".to_string(),
-                            todos,
+                            tasks,
                             created_at: Utc::now(),
                         }],
                     };
                     // Save the migrated data
                     self.save()?;
                 } else {
-                    return Err("Invalid data format in todos.json".into());
+                    return Err("Invalid data format in tasks.json".into());
                 }
             }
         }
@@ -62,7 +62,7 @@ impl TodoStore {
         Ok(())
     }
 
-    pub fn get_current_todos(&mut self) -> &mut Vec<Todo> {
+    pub fn get_current_tasks(&mut self) -> &mut Vec<Task> {
         // Ensure current project exists, create default if needed
         if !self
             .store
@@ -74,27 +74,27 @@ impl TodoStore {
             if !self.store.projects.iter().any(|p| p.name == "default") {
                 self.store.projects.push(Project {
                     name: "default".to_string(),
-                    todos: Vec::new(),
+                    tasks: Vec::new(),
                     created_at: Utc::now(),
                 });
             }
         }
 
-        // Now safely get the current project's todos
+        // Now safely get the current project's tasks
         self.store
             .projects
             .iter_mut()
             .find(|p| p.name == self.store.current_project)
-            .map(|p| &mut p.todos)
+            .map(|p| &mut p.tasks)
             .unwrap()
     }
 
-    pub fn add_todo(
+    pub fn add_task(
         &mut self,
         path: Vec<usize>,
         text: String,
     ) -> Result<bool, Box<dyn std::error::Error>> {
-        let todo = Todo {
+        let task = Task {
             text,
             completed: false,
             created_at: Utc::now(),
@@ -102,14 +102,14 @@ impl TodoStore {
             subtasks: Vec::new(),
         };
 
-        let todos = self.get_current_todos();
+        let tasks = self.get_current_tasks();
         if path.is_empty() {
-            todos.push(todo);
+            tasks.push(task);
             self.save()?;
             Ok(true)
         } else {
             if let Some(parent) = self.find_item(path) {
-                parent.subtasks.push(todo);
+                parent.subtasks.push(task);
                 self.save()?;
                 Ok(true)
             } else {
@@ -118,17 +118,17 @@ impl TodoStore {
         }
     }
 
-    pub fn find_item(&mut self, path: Vec<usize>) -> Option<&mut Todo> {
+    pub fn find_item(&mut self, path: Vec<usize>) -> Option<&mut Task> {
         if path.is_empty() {
             return None;
         }
 
-        let todos = self.get_current_todos();
-        let mut parent_list = todos;
+        let tasks = self.get_current_tasks();
+        let mut parent_list = tasks;
 
         for &i in &path[..path.len() - 1] {
-            if let Some(todo) = parent_list.get_mut(i) {
-                parent_list = &mut todo.subtasks;
+            if let Some(task) = parent_list.get_mut(i) {
+                parent_list = &mut task.subtasks;
             } else {
                 return None;
             }
@@ -137,18 +137,18 @@ impl TodoStore {
         parent_list.get_mut(path[path.len() - 1])
     }
 
-    fn complete_dfs(todo: &mut Todo) {
-        todo.completed = true;
-        todo.completed_at = Some(Utc::now());
+    fn complete_dfs(task: &mut Task) {
+        task.completed = true;
+        task.completed_at = Some(Utc::now());
 
-        for sub in todo.subtasks.iter_mut() {
+        for sub in task.subtasks.iter_mut() {
             Self::complete_dfs(sub);
         }
     }
 
-    pub fn complete_todo(&mut self, path: Vec<usize>) -> Result<bool, Box<dyn std::error::Error>> {
-        if let Some(todo) = self.find_item(path) {
-            Self::complete_dfs(todo);
+    pub fn complete_task(&mut self, path: Vec<usize>) -> Result<bool, Box<dyn std::error::Error>> {
+        if let Some(task) = self.find_item(path) {
+            Self::complete_dfs(task);
             self.save()?;
             Ok(true)
         } else {
@@ -156,16 +156,16 @@ impl TodoStore {
         }
     }
 
-    pub fn delete_todo(&mut self, path: Vec<usize>) -> Result<bool, Box<dyn std::error::Error>> {
+    pub fn delete_task(&mut self, path: Vec<usize>) -> Result<bool, Box<dyn std::error::Error>> {
         if path.is_empty() {
             return Ok(false);
         }
 
-        let todos = self.get_current_todos();
+        let tasks = self.get_current_tasks();
         if path.len() == 1 {
             let index = path[0];
-            if index < todos.len() {
-                todos.remove(index);
+            if index < tasks.len() {
+                tasks.remove(index);
                 self.save()?;
                 Ok(true)
             } else {
@@ -189,53 +189,53 @@ impl TodoStore {
         }
     }
 
-    fn print_todos(todos: &Vec<Todo>, depth: usize) {
+    fn print_tasks(tasks: &Vec<Task>, depth: usize) {
         let indent = "  ".repeat(depth + 3);
-        for (index, todo) in todos.iter().enumerate() {
-            let status = if todo.completed {
+        for (index, task) in tasks.iter().enumerate() {
+            let status = if task.completed {
                 "✓".green()
             } else {
                 "○".red()
             };
-            println!("{}[{}]  {}.  {}", indent, status, index, todo.text);
+            println!("{}[{}]  {}.  {}", indent, status, index, task.text);
 
-            if !todo.subtasks.is_empty() {
-                Self::print_todos(&todo.subtasks, depth + 1);
+            if !task.subtasks.is_empty() {
+                Self::print_tasks(&task.subtasks, depth + 1);
             }
         }
     }
 
-    pub fn list_todos(&mut self) {
-        let todos = self.get_current_todos();
-        if todos.is_empty() {
+    pub fn list_tasks(&mut self) {
+        let tasks = self.get_current_tasks();
+        if tasks.is_empty() {
             println!("      list is empty.");
         } else {
-            Self::print_todos(todos, 0);
+            Self::print_tasks(tasks, 0);
         }
     }
 
     pub fn clear_completed(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        let todos = self.get_current_todos();
-        Self::clear_completed_recursive(todos);
+        let tasks = self.get_current_tasks();
+        Self::clear_completed_recursive(tasks);
         self.save()?;
         Ok(())
     }
 
-    fn clear_completed_recursive(todos: &mut Vec<Todo>) {
-        todos.retain(|t| !t.completed);
-        for todo in todos.iter_mut() {
-            Self::clear_completed_recursive(&mut todo.subtasks);
+    fn clear_completed_recursive(tasks: &mut Vec<Task>) {
+        tasks.retain(|t| !t.completed);
+        for task in tasks.iter_mut() {
+            Self::clear_completed_recursive(&mut task.subtasks);
         }
     }
 
     pub fn clear_all(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        let todos = self.get_current_todos();
-        todos.clear();
+        let tasks = self.get_current_tasks();
+        tasks.clear();
         self.save()?;
         Ok(())
     }
 
-    pub fn move_todo(
+    pub fn move_task(
         &mut self,
         path: Vec<usize>,
         direction: &str,
@@ -251,15 +251,15 @@ impl TodoStore {
             path[..path.len() - 1].to_vec()
         };
 
-        let todos = self.get_current_todos();
-        let todo_list = if parent_path.is_empty() {
-            todos
+        let tasks = self.get_current_tasks();
+        let task_list = if parent_path.is_empty() {
+            tasks
         } else {
-            // Find the parent todo item
-            let mut parent_list = todos;
+            // Find the parent task item
+            let mut parent_list = tasks;
             for &i in &parent_path {
-                if let Some(todo) = parent_list.get_mut(i) {
-                    parent_list = &mut todo.subtasks;
+                if let Some(task) = parent_list.get_mut(i) {
+                    parent_list = &mut task.subtasks;
                 } else {
                     return Ok(false);
                 }
@@ -267,7 +267,7 @@ impl TodoStore {
             parent_list
         };
 
-        if index >= todo_list.len() {
+        if index >= task_list.len() {
             return Ok(false);
         }
 
@@ -279,7 +279,7 @@ impl TodoStore {
                 index - 1
             }
             "down" => {
-                if index >= todo_list.len() - 1 {
+                if index >= task_list.len() - 1 {
                     return Ok(false); // Already at bottom
                 }
                 index + 1
@@ -291,16 +291,16 @@ impl TodoStore {
                 0
             }
             "bottom" => {
-                if index >= todo_list.len() - 1 {
+                if index >= task_list.len() - 1 {
                     return Ok(false); // Already at bottom
                 }
-                todo_list.len() - 1
+                task_list.len() - 1
             }
             _ => {
                 // Try to parse as a number for absolute positioning
                 match direction.parse::<usize>() {
                     Ok(pos) => {
-                        if pos >= todo_list.len() {
+                        if pos >= task_list.len() {
                             return Ok(false);
                         }
                         pos
@@ -312,7 +312,7 @@ impl TodoStore {
 
         // Perform the swap
         if new_index != index {
-            todo_list.swap(index, new_index);
+            task_list.swap(index, new_index);
             self.save()?;
         }
 
@@ -327,7 +327,7 @@ impl TodoStore {
 
         self.store.projects.push(Project {
             name: name.clone(),
-            todos: Vec::new(),
+            tasks: Vec::new(),
             created_at: Utc::now(),
         });
         Ok(true)

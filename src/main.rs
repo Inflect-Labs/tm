@@ -8,7 +8,7 @@ mod utils;
 
 use commands::Commands;
 use handlers::*;
-use store::TodoStore;
+use store::TaskStore;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Check for version flags first
@@ -20,7 +20,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let commands = Commands::parse();
 
-    let mut store = TodoStore::new()?;
+    let mut store = TaskStore::new()?;
     store.load()?;
 
     match commands {

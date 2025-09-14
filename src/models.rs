@@ -2,18 +2,18 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct Todo {
+pub struct Task {
     pub text: String,
     pub completed: bool,
     pub created_at: DateTime<Utc>,
     pub completed_at: Option<DateTime<Utc>>,
-    pub subtasks: Vec<Todo>,
+    pub subtasks: Vec<Task>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Project {
     pub name: String,
-    pub todos: Vec<Todo>,
+    pub tasks: Vec<Task>,
     pub created_at: DateTime<Utc>,
 }
 

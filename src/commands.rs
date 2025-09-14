@@ -8,42 +8,42 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 #[command(version = VERSION)]
 #[command(arg_required_else_help = true)]
 pub enum Commands {
-    /// add a new todo item or subtask
+    /// add a new task or subtask
     #[command(visible_alias = "a")]
     Add {
-        /// description of the item
+        /// description of the task
         text: String,
-        /// nested index path of the parent item (empty for root level)
+        /// nested index path of the parent task (empty for root level)
         #[arg(required = false)]
         path: Vec<usize>,
     },
-    /// list all todo items
+    /// list all tasks
     #[command(visible_alias = "l", visible_alias = "ls")]
     List,
     /// mark an item as completed
     #[command(visible_alias = "c")]
     Check {
-        /// the nested index path of the item to complete
+        /// the nested index path of the task to complete
         #[arg(required = true, num_args = 1..)]
         path: Vec<usize>,
     },
-    /// delete an item
+    /// delete a task
     #[command(visible_alias = "d", visible_alias = "rm")]
     Delete {
-        /// the nested index path of the item to delete
+        /// the nested index path of the task to delete
         #[arg(required = true, num_args = 1..)]
         path: Vec<usize>,
     },
-    /// clear all completed items
+    /// clear all completed tasks
     #[command(visible_alias = "cl")]
     Clear,
-    /// clear all items
+    /// clear all tasks
     #[command(visible_alias = "ca")]
     ClearAll,
-    /// move an item up or down in the list
+    /// move a task up or down in the list
     #[command(visible_alias = "m")]
     Move {
-        /// the nested index path of the item to move
+        /// the nested index path of the task to move
         #[arg(required = true, num_args = 1..)]
         path: Vec<usize>,
         /// move up one position

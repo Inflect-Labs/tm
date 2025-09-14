@@ -10,7 +10,7 @@ pub fn get_data_file_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
         fs::create_dir_all(&app_dir)?;
     }
 
-    Ok(app_dir.join("todos.json"))
+    Ok(app_dir.join("tasks.json"))
 }
 
 pub fn get_data_directory() -> Result<PathBuf, Box<dyn std::error::Error>> {
