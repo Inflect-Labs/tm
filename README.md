@@ -25,7 +25,7 @@ sudo cp target/release/tm /usr/local/bin/
 
 ## usage
 
-### basic task taskmanagement
+### basic task management
 
 #### add a task
 ```bash
@@ -35,12 +35,12 @@ tm a "walk the dog"              # short alias
 
 #### add subtasks
 ```bash
-tm add 0 "get milk"              # add subtask to item 0
-tm add 0 "get bread"             # add another subtask to item 0
-tm add 0 1 "whole wheat bread"   # add sub-subtask to item 0's subtask 1
+tm add "get milk" 0              # add subtask to item 0
+tm add "get bread" 0             # add another subtask to item 0
+tm add "whole wheat bread" 0 1   # add sub-subtask to item 0's subtask 1
 ```
 
-#### list taskstasks
+#### list tasks
 ```bash
 tm list                          # list all tasks
 tm l                             # short alias
