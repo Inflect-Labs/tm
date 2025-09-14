@@ -13,7 +13,9 @@ jobs:
   build:
     name: Build for ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.continue-on-error || false }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
@@ -28,10 +30,12 @@ jobs:
             target: x86_64-apple-darwin
             artifact_name: tm
             asset_name: tm-macos-x86_64
+            continue-on-error: true
           - os: macos-latest
             target: aarch64-apple-darwin
             artifact_name: tm
             asset_name: tm-macos-aarch64
+            continue-on-error: true
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             artifact_name: tm.exe
@@ -84,7 +88,7 @@ jobs:
     name: Create Release
     needs: build
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/') && !cancelled()
 
     steps:
       - name: Checkout code
@@ -95,6 +99,11 @@ jobs:
         with:
           path: artifacts
 
+      - name: List available artifacts
+        run: |
+          echo "Available build artifacts:"
+          find artifacts -type f -name "tm*" | sort
+          
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
@@ -111,6 +120,14 @@ jobs:
             1. Download the appropriate binary for your platform below
             2. Make it executable: `chmod +x tm-*`
             3. Move to your PATH: `sudo mv tm-* /usr/local/bin/tm`
+
+            ### Platform Support
+            This release includes binaries for:
+            - Linux (x86_64 and aarch64)
+            - Windows (x86_64)
+            - macOS (when billing allows - x86_64 and aarch64)
+
+            **Note**: macOS builds may not be available in all releases due to GitHub Actions billing limitations.
 
             ### Verify Installation
             ```bash
