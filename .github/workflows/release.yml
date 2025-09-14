@@ -101,21 +101,7 @@ jobs:
           files: artifacts/*/*
           body: |
             ## Installation
-
-            ### Quick Install (Recommended)
             ```bash
             curl -fsSL https://tm-cli.com/install | bash
-            ```
-
-            ### Manual Installation
-            1. Download the appropriate binary for your platform below
-            2. Make it executable: `chmod +x tm-*`
-            3. Move to your PATH: `sudo mv tm-* /usr/local/bin/tm`
-
-            ### Verify Installation
-            ```bash
             tm --version
             ```
-
-            ## Changes
-            - See commit history for detailed changes
