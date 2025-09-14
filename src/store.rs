@@ -330,6 +330,7 @@ impl TaskStore {
             tasks: Vec::new(),
             created_at: Utc::now(),
         });
+        self.save()?;
         Ok(true)
     }
 
