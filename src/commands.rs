@@ -27,6 +27,13 @@ pub enum Commands {
         #[arg(required = true, num_args = 1..)]
         path: Vec<usize>,
     },
+    /// mark an item as incomplete
+    #[command(visible_alias = "uc")]
+    Uncheck {
+        /// the nested index path of the task to mark as incomplete
+        #[arg(required = true, num_args = 1..)]
+        path: Vec<usize>,
+    },
     /// delete a task
     #[command(visible_alias = "d", visible_alias = "rm")]
     Delete {

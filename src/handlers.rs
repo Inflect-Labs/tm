@@ -54,6 +54,19 @@ pub fn handle_check(
     Ok(())
 }
 
+pub fn handle_uncheck(
+    store: &mut TaskStore,
+    path: Vec<usize>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if store.uncomplete_task(path.clone())? {
+        println!("uncompleted item {}", format_path(&path));
+    } else {
+        eprintln!("error: item at path {} not found", format_path(&path));
+        std::process::exit(1);
+    }
+    Ok(())
+}
+
 pub fn handle_delete(
     store: &mut TaskStore,
     path: Vec<usize>,

@@ -146,9 +146,28 @@ impl TaskStore {
         }
     }
 
+    fn uncomplete_dfs(task: &mut Task) {
+        task.completed = false;
+        task.completed_at = None;
+
+        for sub in task.subtasks.iter_mut() {
+            Self::uncomplete_dfs(sub);
+        }
+    }
+
     pub fn complete_task(&mut self, path: Vec<usize>) -> Result<bool, Box<dyn std::error::Error>> {
         if let Some(task) = self.find_item(path) {
             Self::complete_dfs(task);
+            self.save()?;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    pub fn uncomplete_task(&mut self, path: Vec<usize>) -> Result<bool, Box<dyn std::error::Error>> {
+        if let Some(task) = self.find_item(path) {
+            Self::uncomplete_dfs(task);
             self.save()?;
             Ok(true)
         } else {

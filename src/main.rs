@@ -39,6 +39,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::Check { path } => {
             handle_check(&mut store, path)?;
         }
+        Commands::Uncheck { path } => {
+            handle_uncheck(&mut store, path)?;
+        }
         Commands::ClearAll => {
             handle_clear_all(&mut store)?;
         }
