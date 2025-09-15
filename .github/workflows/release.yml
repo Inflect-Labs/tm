@@ -111,28 +111,7 @@ jobs:
           body: |
             ## Installation
 
-            ### Quick Install (Recommended)
             ```bash
             curl -fsSL https://tm-cli.com/install | bash
-            ```
-
-            ### Manual Installation
-            1. Download the appropriate binary for your platform below
-            2. Make it executable: `chmod +x tm-*`
-            3. Move to your PATH: `sudo mv tm-* /usr/local/bin/tm`
-
-            ### Platform Support
-            This release includes binaries for:
-            - Linux (x86_64 and aarch64)
-            - Windows (x86_64)
-            - macOS (when billing allows - x86_64 and aarch64)
-
-            **Note**: macOS builds may not be available in all releases due to GitHub Actions billing limitations.
-
-            ### Verify Installation
-            ```bash
             tm --version
             ```
-
-            ## Changes
-            - See commit history for detailed changes
