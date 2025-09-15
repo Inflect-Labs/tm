@@ -349,6 +349,8 @@ impl TaskStore {
             tasks: Vec::new(),
             created_at: Utc::now(),
         });
+        // Persist the new project so subsequent CLI invocations can see it
+        self.save()?;
         Ok(true)
     }
 
